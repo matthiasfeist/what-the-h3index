@@ -76,7 +76,7 @@ function updateTiles() {
   const mapZoom = map.getZoom()
   let h3zoom = Math.max(0, Math.floor((mapZoom-3) * 0.8))
 
-  const h3indexes = h3.polyfill(extentsGeom, h3zoom, true)
+  const h3indexes = extendH3IndexesByOne(h3.polyfill(extentsGeom, h3zoom, true))
 
   map.getSource('tiles-geojson').setData({
     type: 'FeatureCollection',
@@ -87,6 +87,14 @@ function updateTiles() {
     type: 'FeatureCollection',
     features: h3indexes.map(getTileCenterFeature)
   });
+}
+
+function extendH3IndexesByOne(indexes) {
+  const set = new Set()
+  indexes.forEach(index => {
+    h3.kRing(index,1).forEach(ringIndex => set.add(ringIndex))
+  })
+  return Array.from(set)
 }
 
 function getExtentsGeom() {
