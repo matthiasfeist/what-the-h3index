@@ -10,7 +10,7 @@ var map = new mapboxgl.Map({
   style: 'mapbox://styles/mapbox/light-v10',
   center: [15, 50],
   zoom: 3,
-  maxBounds: [ [-170, -85], [170, 85] ]
+  maxBounds: [[-170, -85], [170, 85]]
 });
 
 map.on('load', () => {
@@ -74,25 +74,26 @@ map.on('moveend', updateTiles);
 function updateTiles() {
   var extentsGeom = getExtentsGeom();
   const mapZoom = map.getZoom()
-  let h3zoom = Math.max(0, Math.floor((mapZoom-3) * 0.8))
+  let h3zoom = Math.max(0, Math.floor((mapZoom - 3) * 0.8))
 
   const h3indexes = extendH3IndexesByOne(h3.polyfill(extentsGeom, h3zoom, true))
 
-  map.getSource('tiles-geojson').setData({
-    type: 'FeatureCollection',
-    features: h3indexes.map(getTileFeature)
-  });
+  map.getSource('tiles-geojson').setData(
+    {
+      type: 'FeatureCollection',
+      features: h3indexes.map(getTileFeature)
+    });
 
   map.getSource('tiles-centers-geojson').setData({
-    type: 'FeatureCollection',
-    features: h3indexes.map(getTileCenterFeature)
-  });
+      type: 'FeatureCollection',
+      features: h3indexes.map(getTileCenterFeature)
+    });
 }
 
 function extendH3IndexesByOne(indexes) {
   const set = new Set()
   indexes.forEach(index => {
-    h3.kRing(index,1).forEach(ringIndex => set.add(ringIndex))
+    h3.kRing(index, 1).forEach(ringIndex => set.add(ringIndex))
   })
   return Array.from(set)
 }
@@ -109,9 +110,11 @@ function getExtentsGeom() {
 }
 
 function getTileFeature(h3index) {
-  return geojson2h3.h3ToFeature(h3index, {
+  const feature = geojson2h3.h3ToFeature(h3index, {
     pentagon: h3.h3IsPentagon(h3index),
   })
+  fixTransmeridian(feature)
+  return feature
 }
 
 function getTileCenterFeature(h3index) {
@@ -123,7 +126,57 @@ function getTileCenterFeature(h3index) {
     },
     geometry: {
       type: 'Point',
-      coordinates: [center[1],center[0]]
+      coordinates: [center[1], center[0]]
     }
   };
+}
+
+/**************************** 
+ * the follwing functions are copied from
+ * https://observablehq.com/@nrabinowitz/mapbox-utils#fixTransmeridian
+ ****************************/
+
+function fixTransmeridianCoord(coord) {
+  const lng = coord[0];
+  coord[0] = lng < 0 ? lng + 360 : lng;
+}
+
+function fixTransmeridianLoop(loop) {
+  let isTransmeridian = false;
+  for (let i = 0; i < loop.length; i++) {
+    // check for arcs > 180 degrees longitude, flagging as transmeridian
+    if (Math.abs(loop[0][0] - loop[(i + 1) % loop.length][0]) > 180) {
+      isTransmeridian = true;
+      break;
+    }
+  }
+  if (isTransmeridian) {
+    loop.forEach(fixTransmeridianCoord);
+  }
+}
+
+function fixTransmeridianPolygon(polygon) {
+  polygon.forEach(fixTransmeridianLoop);
+}
+
+function fixTransmeridian(feature) {
+  const { type } = feature;
+  if (type === 'FeatureCollection') {
+    feature.features.map(fixTransmeridian);
+    return;
+  }
+  const { type: geometryType, coordinates } = feature.geometry;
+  switch (geometryType) {
+    case 'LineString':
+      fixTransmeridianLoop(coordinates);
+      return;
+    case 'Polygon':
+      fixTransmeridianPolygon(coordinates);
+      return;
+    case 'MultiPolygon':
+      coordinates.forEach(fixTransmeridianPolygon);
+      return;
+    default:
+      throw new Error(`Unknown geometry type: ${geometryType}`);
+  }
 }
