@@ -1,20 +1,64 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset='utf-8' />
     <title>What the tile?</title>
     <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
     <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.css' rel='stylesheet' />
     <style>
-        body { margin:0; padding:0; font-family: sans-serif;}
-        #map { position:absolute; top:0; bottom:0; width:100%; }
-        #repo {position: absolute; z-index: 99; background: white; padding: 5px; border-right: 1px solid; border-bottom: 1px solid; border-radius: 0 0 5px 0;}
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .map-overlay {
+            position: absolute;
+            width: 25%;
+            min-width: 250px;
+            max-width: 400px;
+            top: 0;
+            left: 0;
+            padding: 10px;
+        }
+
+        .map-overlay .map-overlay-inner {
+            background-color: #fff;
+            box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgb(222, 222, 222);
+            border-radius: 3px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .map-overlay input {
+            width: 100%;
+        }
     </style>
 </head>
 
 <body>
-    <div id="repo"><a href="https://github.com/matthiasfeist/what-the-h3index">See this project on Github</a></div>
     <div id='map'></div>
+
+    <div class="map-overlay top">
+        <div class="map-overlay-inner">
+            <a href="https://github.com/matthiasfeist/what-the-h3index">See this project on Github</a>
+        </div>
+        <div class="map-overlay-inner">
+            <span>Zoom to H3 index:</span>
+            <input id="zoomToIndex" type="text" pattern="[0-9a-f]{15}">
+        </div>
+
+    </div>
 </body>
 <script src='./bundle.js'></script>
+
 </html>

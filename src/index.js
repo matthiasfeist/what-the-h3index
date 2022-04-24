@@ -4,8 +4,8 @@ const geojson2h3 = require('geojson2h3')
 
 // public token
 mapboxgl.accessToken = 'pk.eyJ1IjoibWF0dGhpYXNmZWlzdCIsImEiOiJjbDB0ZWc1dHcwY2J3M2NsemR3bXJrMHVvIn0.GcKiU5EBVtrQjdp29y5wAA';
-
-var map = new mapboxgl.Map({
+let h3IndexToHighlight = '';
+let map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/light-v10',
   center: [15, 50],
@@ -61,8 +61,9 @@ map.on('load', () => {
       'text-color-transition': {
         duration: 0
       },
-      'text-halo-color': '#fff',
-      'text-halo-width': 0.5
+      'text-halo-color': ['case', ['get', 'highlight'], '#0f0', '#fff'],
+      'text-halo-width': 2,
+      'text-halo-blur': 5
     }
   });
 
@@ -70,6 +71,24 @@ map.on('load', () => {
 });
 
 map.on('moveend', updateTiles);
+
+const h3Input = document.getElementById('zoomToIndex');
+h3Input.addEventListener('change', (e) => {
+  const input = h3Input.value
+  if (!h3.h3IsValid(input)) {
+    alert('input is not a valid H3 index')
+    return
+  }
+  h3IndexToHighlight = input
+  const res = h3.h3GetResolution(input)
+  const [lat, lng] = h3.h3ToGeo(input)
+
+  map.flyTo({
+    center: [lng, lat],
+    zoom: Math.ceil((res + 3) * 1.2)
+  });
+});
+
 
 function updateTiles() {
   var extentsGeom = getExtentsGeom();
@@ -85,9 +104,9 @@ function updateTiles() {
     });
 
   map.getSource('tiles-centers-geojson').setData({
-      type: 'FeatureCollection',
-      features: h3indexes.map(getTileCenterFeature)
-    });
+    type: 'FeatureCollection',
+    features: h3indexes.map(getTileCenterFeature)
+  });
 }
 
 function extendH3IndexesByOne(indexes) {
@@ -123,6 +142,7 @@ function getTileCenterFeature(h3index) {
     type: 'Feature',
     properties: {
       text: h3index + '\nRes: ' + h3.h3GetResolution(h3index),
+      highlight: h3index === h3IndexToHighlight
     },
     geometry: {
       type: 'Point',
