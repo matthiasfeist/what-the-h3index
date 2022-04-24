@@ -4,7 +4,10 @@ const geojson2h3 = require('geojson2h3')
 
 // public token
 mapboxgl.accessToken = 'pk.eyJ1IjoibWF0dGhpYXNmZWlzdCIsImEiOiJjbDB0ZWc1dHcwY2J3M2NsemR3bXJrMHVvIn0.GcKiU5EBVtrQjdp29y5wAA';
+
 let h3IndexToHighlight = '';
+const h3Input = document.getElementById('zoomToIndex');
+
 let map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/light-v10',
@@ -62,8 +65,8 @@ map.on('load', () => {
         duration: 0
       },
       'text-halo-color': ['case', ['get', 'highlight'], '#0f0', '#fff'],
-      'text-halo-width': 2,
-      'text-halo-blur': 5
+      'text-halo-width': 1,
+      'text-halo-blur': 1
     }
   });
 
@@ -71,8 +74,11 @@ map.on('load', () => {
 });
 
 map.on('moveend', updateTiles);
+map.on('click', (e) => {
+  const h3Index = h3.geoToH3(e.lngLat.lat, e.lngLat.lng, mapZoomToH3Res(map.getZoom()))
+  h3Input.value = h3Index
+});
 
-const h3Input = document.getElementById('zoomToIndex');
 h3Input.addEventListener('change', (e) => {
   const input = h3Input.value
   if (!h3.h3IsValid(input)) {
@@ -85,7 +91,7 @@ h3Input.addEventListener('change', (e) => {
 
   map.flyTo({
     center: [lng, lat],
-    zoom: Math.ceil((res + 3) * 1.2)
+    zoom: h3ResToMapZoom(res)
   });
 });
 
@@ -93,9 +99,9 @@ h3Input.addEventListener('change', (e) => {
 function updateTiles() {
   var extentsGeom = getExtentsGeom();
   const mapZoom = map.getZoom()
-  let h3zoom = Math.max(0, Math.floor((mapZoom - 3) * 0.8))
+  let h3res = mapZoomToH3Res(mapZoom)
 
-  const h3indexes = extendH3IndexesByOne(h3.polyfill(extentsGeom, h3zoom, true))
+  const h3indexes = extendH3IndexesByOne(h3.polyfill(extentsGeom, h3res, true))
 
   map.getSource('tiles-geojson').setData(
     {
@@ -149,6 +155,13 @@ function getTileCenterFeature(h3index) {
       coordinates: [center[1], center[0]]
     }
   };
+}
+
+function mapZoomToH3Res(zoom) {
+  return Math.max(0, Math.floor((zoom - 3) * 0.8))
+}
+function h3ResToMapZoom(res) {
+  return Math.ceil((res + 3) * 1.2)
 }
 
 /**************************** 
